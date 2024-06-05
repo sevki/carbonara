@@ -1,0 +1,11 @@
+[package]
+name = "carbonara"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Calculate co2 Emmisions"
+repository = "https://github.com/sevki/carbonara"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
