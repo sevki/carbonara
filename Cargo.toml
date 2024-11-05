@@ -1,10 +1,11 @@
 [package]
 name = "carbonara"
-version = "0.1.1"
+version = "0.1.4"
 edition = "2021"
 license = "MIT"
 description = "Calculate co2 Emmisions using https://www.green-coding.io/co2-formulas/"
 repository = "https://github.com/sevki/carbonara"
+keywords = ["co2", "carbon", "emissions", "climate", "energy"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -18,8 +19,4 @@ uom = { version = "0.36.0", features = ["serde"] }
 
 [[bin]]
 name = "energy"
-path = "src/energy.rs"
-
-[[bin]]
-name = "cargo-energy"
 path = "src/energy.rs"

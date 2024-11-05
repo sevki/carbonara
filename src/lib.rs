@@ -1,9 +1,7 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
-#![doc(html_logo_url = "https://raw.githubusercontent.com/sevki/carbonara/main/logo/carbonara.png")]
-#![doc(
-    html_favicon_url = "https://raw.githubusercontent.com/sevki/carbonara/main/logo/carbonara.png"
-)]
+#![doc(html_logo_url = "https://raw.githubusercontent.com/sevki/carbonara/main/carbonara.png")]
+#![doc(html_favicon_url = "https://raw.githubusercontent.com/sevki/carbonara/main/carbonara.png")]
 
 use std::{
     fmt::Display,
@@ -115,8 +113,11 @@ pub fn benchmarks_to_kwh(runtime_seconds: f64, average_power_watts: f64) -> Ener
 }
 
 /// Represents different power measurement methods
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PowerSource {
+    /// Automatically select the best power source
+    #[default]
+    Auto,
     /// Intel RAPL (Running Average Power Limit)
     Rapl,
     /// System-wide power consumption via ACPI
@@ -128,6 +129,7 @@ pub enum PowerSource {
 impl Display for PowerSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            PowerSource::Auto => write!(f, "Auto"),
             PowerSource::Rapl => write!(f, "RAPL"),
             PowerSource::Acpi => write!(f, "ACPI"),
             PowerSource::TdpEstimate => write!(f, "TDP Estimate"),
@@ -140,6 +142,7 @@ impl FromStr for PowerSource {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "auto" => Ok(PowerSource::Auto),
             "rapl" => Ok(PowerSource::Rapl),
             "acpi" => Ok(PowerSource::Acpi),
             "tdp" => Ok(PowerSource::TdpEstimate),
@@ -340,6 +343,10 @@ impl RaplMeasurement {
         if !std::path::Path::new(package_path).exists() {
             return Err(MeasurementError::RaplNotAvailable);
         }
+        // check if we have permission to read the file
+        if File::open(package_path).is_err() {
+            return Err(MeasurementError::RaplNotAvailable);
+        };
         Ok(Self {
             package_path: package_path.to_string(),
         })
@@ -374,6 +381,20 @@ impl BenchmarkExecutor {
         F: FnOnce() + Send + 'static,
     {
         match self.config.power_source {
+            PowerSource::Auto => {
+                // Try RAPL first
+                if RaplMeasurement::new().is_ok() {
+                    return self.measure_with_rapl(workload);
+                }
+
+                // Try ACPI next
+                if AcpiMeasurement::new().is_ok() {
+                    return self.measure_with_acpi(workload);
+                }
+
+                // Fall back to TDP estimate
+                self.measure_with_tdp(workload)
+            }
             PowerSource::Rapl => self.measure_with_rapl(workload),
             PowerSource::Acpi => self.measure_with_acpi(workload),
             PowerSource::TdpEstimate => self.measure_with_tdp(workload),
